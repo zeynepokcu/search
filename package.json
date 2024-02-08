@@ -1,0 +1,19 @@
+{
+  "type": "module",
+  "name": "above-educational-bootstrap-responsive-template",
+  "version": "1.0.0",
+  "description": "Free Responsive HTML5 Template",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@testing-library/react-hooks": "^3.4.1",
+    "fs": "^0.0.1-security",
+    "pdf-text-extract": "^1.5.0",
+    "react": "^18.2.0",
+    "reactt": "^1.0.1"
+  }
+}
