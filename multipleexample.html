@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Search</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .modal-container {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: flex-end;
+            max-width: 640px;
+            /* Set max width to 640px */
+            width: 100%;
+            height: auto;
+            /* Ensure modal fills the viewport width */
+        }
+
+        /* Style for the search form */
+        #searchForm {
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+
+        /* Style for the search input */
+        #searchTerm {
+            border: none;
+            border-bottom: 1px solid #007bff;
+            /* Blue underline */
+            padding: 5px;
+            margin-bottom: 10px;
+            outline: none;
+            /* Remove default focus outline */
+        }
+
+        /* Style for the search button */
+        #searchButton {
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #searchButton:hover {
+            background-color: #0056b3;
+        }
+
+        /* Style for the search results */
+        #searchResults {
+            padding: 0;
+            list-style-type: none;
+            overflow-y: auto;
+            /* Enable vertical scrolling for overflow */
+            flex-grow: 1;
+            /* Expand to fill remaining space */
+        }
+
+        /* Style for the scrollbar */
+        #searchResults::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        #searchResults::-webkit-scrollbar-thumb {
+            background-color: #007bff;
+            /* Blue scrollbar */
+            border-radius: 10px;
+            /* Border radius */
+        }
+
+        .searchResultItem {
+            cursor: pointer;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s ease;
+            /* Smooth transition */
+        }
+
+        .searchResultItem:hover {
+            background-color: #f9f9f9;
+            /* Lighter background color on hover */
+        }
+
+        .searchResultItem h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Button to open the modal -->
+    <button onclick="openModal()">Open Search</button>
+
+    <!-- Modal container -->
+    <div id="modal" class="modal-container" style="display:none;">
+        <!-- Search form -->
+        <form id="searchForm">
+            <input type="text" id="searchTerm" placeholder="Enter search term">
+        </form>
+        <!-- Search results -->
+        <ul id="searchResults"></ul>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script>
+        function openModal() {
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        document.getElementById('searchTerm').addEventListener('input', function (e) {
+            var searchTerm = e.target.value.trim().toLowerCase();
+            searchInPDF(searchTerm);
+        });
+
+        async function searchInPDF(searchTerm) {
+            const pdfUrls = ['essay.pdf', 'handbook.pdf']; // Provide an array of PDF URLs
+            const searchResults = [];
+
+            for (const pdfUrl of pdfUrls) {
+                const pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+                const maxPages = pdfDoc.numPages;
+
+                for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+                    const page = await pdfDoc.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+                    const text = textContent.items.map(item => item.str.toLowerCase()).join(' ');
+
+                    let startIndex = 0;
+                    while ((startIndex = text.indexOf(searchTerm, startIndex)) !== -1) {
+                        const endIndex = startIndex + searchTerm.length;
+                        const contextLength = 50;
+                        const contextStart = Math.max(0, startIndex - contextLength);
+                        const contextEnd = Math.min(text.length, endIndex + contextLength);
+
+                        const context = text.substring(contextStart, contextEnd).trim();
+                        const contextSentences = context.split(/\. |\? |! /); // Split context into sentences
+                        const matchedSentence = contextSentences.find(sentence => sentence.includes(searchTerm));
+
+                        searchResults.push({ pdfUrl, page: pageNum, sentence: matchedSentence, startIndex, endIndex });
+                        startIndex = endIndex; // Move to the next occurrence
+                    }
+                }
+            }
+
+            displaySearchResults(searchResults);
+        }
+
+
+        function displaySearchResults(results) {
+            const searchResultsList = document.getElementById('searchResults');
+            searchResultsList.innerHTML = '';
+
+            results.forEach((result, index) => {
+                const card = document.createElement('li');
+                card.classList.add('searchResultItem');
+                card.innerHTML = `
+                <h3>${result.pdfUrl} - Sayfa ${result.page}</h3>
+                <p>${result.sentence}</p>
+            `;
+                card.addEventListener('click', function () {
+                    const url = `${result.pdfUrl}#page=${result.page}`;
+                    window.open(url, '_blank');
+                });
+                searchResultsList.appendChild(card);
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>

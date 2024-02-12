@@ -19,10 +19,83 @@
 	<!--[if lt IE 9]>
       <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
     <![endif]-->
+	<style>
+
+		body {
+			font-family: Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+		}
+
+		.modal-container {
+			position: fixed;
+			top: 0;
+			right: 0;
+			bottom: 0;
+			background-color: rgba(255, 255, 255, 0.95);
+			padding: 20px;
+			box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+			z-index: 9999;
+			display: flex;
+			flex-direction: column;
+			justify-content: flex-start;
+			align-items: flex-end;
+			max-width: 640px;
+			width: 100%;
+		}
+
+		#searchForm {
+			margin-bottom: 10px;
+			display: flex;
+			flex-direction: column;
+			width: 100%;
+		}
+
+		#searchTerm {
+			border: none;
+			border-bottom: 1px solid #007bff;
+			padding: 5px;
+			margin-bottom: 10px;
+			outline: none;
+		}
+
+		#searchResults {
+			padding: 0;
+			list-style-type: none;
+			overflow-y: auto;
+			flex-grow: 1;
+		}
+
+		#searchResults::-webkit-scrollbar {
+			width: 12px;
+		}
+
+		#searchResults::-webkit-scrollbar-thumb {
+			background-color: #007bff;
+			border-radius: 10px;
+		}
+
+		.searchResultItem {
+			cursor: pointer;
+			border-radius: 5px;
+			padding: 10px;
+			margin-bottom: 10px;
+			transition: background-color 0.3s ease;
+		}
+
+		.searchResultItem:hover {
+			background-color: #f9f9f9;
+		}
+
+		.searchResultItem h3 {
+			margin-top: 0;
+		}
+	</style>
 
 </head>
 
 <body>
+
 	<div id="wrapper">
 		<!-- start header -->
 		<header>
@@ -47,7 +120,8 @@
 							<li><a href="contact.html">Contact</a></li>
 							<!-- HTML for the search input -->
 							<div class="search-container">
-								<input type="text" class="search-input" placeholder="Search..." data-toggle="modal" data-target="#exampleModal">
+								<input type="text" class="search-input" placeholder="Search..." data-toggle="modal"
+									data-target="#exampleModal">
 							</div>
 
 
@@ -389,14 +463,81 @@
 		<div class="modal-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
-					<input type="text" class="input-field" placeholder="Search">
+					<input type="text" id="searchTerm" class="input-field" placeholder="Search">
 				</div>
 				<div class="modal-body">
-
+					<ul id="searchResults"></ul>
 				</div>
 			</div>
 		</div>
 	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+	<script>
+		function openModal() {
+			document.getElementById('exampleModal').style.display = 'flex';
+		}
+
+		document.getElementById('searchTerm').addEventListener('input', function (e) {
+			var searchTerm = e.target.value.trim().toLowerCase();
+			searchInPDF(searchTerm);
+		});
+
+		async function searchInPDF(searchTerm) {
+			const pdfUrls = ['essay.pdf', 'handbook.pdf']; // Provide an array of PDF URLs
+			const searchResults = [];
+
+			for (const pdfUrl of pdfUrls) {
+				const pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+				const maxPages = pdfDoc.numPages;
+
+				for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
+					const page = await pdfDoc.getPage(pageNum);
+					const textContent = await page.getTextContent();
+					const text = textContent.items.map(item => item.str.toLowerCase()).join(' ');
+
+					let startIndex = 0;
+					while ((startIndex = text.indexOf(searchTerm, startIndex)) !== -1) {
+						const endIndex = startIndex + searchTerm.length;
+						const contextLength = 50;
+						const contextStart = Math.max(0, startIndex - contextLength);
+						const contextEnd = Math.min(text.length, endIndex + contextLength);
+
+						const context = text.substring(contextStart, contextEnd).trim();
+						const contextSentences = context.split(/\. |\? |! /); // Split context into sentences
+						const matchedSentence = contextSentences.find(sentence => sentence.includes(searchTerm));
+
+						searchResults.push({ pdfUrl, page: pageNum, sentence: matchedSentence, startIndex, endIndex });
+						startIndex = endIndex; // Move to the next occurrence
+					}
+				}
+			}
+
+			displaySearchResults(searchResults);
+		}
+
+
+		function displaySearchResults(results) {
+			const searchResultsList = document.getElementById('searchResults');
+			searchResultsList.innerHTML = '';
+
+			results.forEach((result, index) => {
+				const card = document.createElement('li');
+				card.classList.add('searchResultItem');
+				card.innerHTML = `
+                <h3>${result.pdfUrl} - Sayfa ${result.page}</h3>
+                <p>${result.sentence}</p>
+            `;
+				card.addEventListener('click', function () {
+					const url = `${result.pdfUrl}#page=${result.page}`;
+					window.open(url, '_blank');
+				});
+				searchResultsList.appendChild(card);
+			});
+		}
+
+	</script>
+
 </body>
 
 </html>
